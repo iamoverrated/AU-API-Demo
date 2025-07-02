@@ -28,17 +28,133 @@ def get_access_token():
     else:
         raise HTTPException(status_code=500, detail="Failed to acquire access token")
 
-# Dummy logic (replace with actual MS Graph logic)
+# MS Graph: Create Administrative Unit
 def create_admin_unit(au_name: str, admin_upn: str):
-    return {"id": "fake-au-id", "name": au_name, "admins": [admin_upn]}
+    access_token = get_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "displayName": au_name,
+        "description": f"AU managed by {admin_upn}",
+        "visibility": "Public"
+    }
+    response = requests.post(
+        "https://graph.microsoft.com/v1.0/directory/administrativeUnits",
+        headers=headers,
+        json=data
+    )
+    if response.status_code != 201:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    return response.json()
 
+# MS Graph: Create Group
 def create_group(group_name: str, au_id: str, owner_upn: str):
-    full_name = f"AUG_{group_name}"
-    return {"id": f"fake-group-id-{group_name.lower()}", "name": full_name, "au_id": au_id, "owners": [owner_upn]}
+    access_token = get_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    group_data = {
+        "displayName": f"AUG_{group_name}",
+        "mailEnabled": False,
+        "mailNickname": f"aug_{group_name.lower()}",
+        "securityEnabled": True,
+        "owners@odata.bind": [
+            f"https://graph.microsoft.com/v1.0/users/{owner_upn}"
+        ]
+    }
+    response = requests.post(
+        "https://graph.microsoft.com/v1.0/groups",
+        headers=headers,
+        json=group_data
+    )
+    if response.status_code != 201:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+    group = response.json()
+
+    # Add group to AU
+    au_bind_url = f"https://graph.microsoft.com/v1.0/directory/administrativeUnits/{au_id}/members/$ref"
+    bind_data = {
+        "@odata.id": f"https://graph.microsoft.com/v1.0/groups/{group['id']}"
+    }
+    bind_response = requests.post(au_bind_url, headers=headers, json=bind_data)
+    if bind_response.status_code != 204:
+        raise HTTPException(status_code=bind_response.status_code, detail=bind_response.json())
+
+    return group
 
 def create_app_registration(au_id: str):
-    return {"client_id": "fake-client-id", "client_secret": "fake-client-secret", "au_id": au_id}
+    access_token = get_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json"
+    }
+    
+    # Create App Registration
+    app_data = {
+        "displayName": f"AppReg-AU-{au_id}",
+        "signInAudience": "AzureADMyOrg"
+    }
+    app_response = requests.post(
+        "https://graph.microsoft.com/v1.0/applications",
+        headers=headers,
+        json=app_data
+    )
+    if app_response.status_code != 201:
+        raise HTTPException(status_code=app_response.status_code, detail=app_response.json())
+    app = app_response.json()
 
+    # Create Client Secret
+    secret_data = {
+        "passwordCredential": {
+            "displayName": "DefaultSecret"
+        }
+    }
+    secret_response = requests.post(
+        f"https://graph.microsoft.com/v1.0/applications/{app['id']}/addPassword",
+        headers=headers,
+        json=secret_data
+    )
+    if secret_response.status_code != 200:
+        raise HTTPException(status_code=secret_response.status_code, detail=secret_response.json())
+    secret = secret_response.json()
+
+    # Create Service Principal
+    sp_data = {"appId": app["appId"]}
+    sp_response = requests.post(
+        "https://graph.microsoft.com/v1.0/servicePrincipals",
+        headers=headers,
+        json=sp_data
+    )
+    if sp_response.status_code != 201:
+        raise HTTPException(status_code=sp_response.status_code, detail=sp_response.json())
+    sp = sp_response.json()
+
+    # Assign AU-scoped Role to SP (Admin)
+    role_assignment = {
+        "principalId": sp["id"],
+        "resourceScope": f"/directory/administrativeUnits/{au_id}",
+        "roleDefinitionId": "fe930be7-5e62-47db-91af-98c3a49a38b1"  # Directory Writers role
+    }
+    ra_response = requests.post(
+        "https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments",
+        headers=headers,
+        json=role_assignment
+    )
+    if ra_response.status_code not in (200, 201):
+        raise HTTPException(status_code=ra_response.status_code, detail=ra_response.json())
+
+    return {
+        "app_display_name": app["displayName"],
+        "app_id": app["appId"],
+        "client_id": app["id"],
+        "service_principal_id": sp["id"],
+        "au_id": au_id
+    }
+
+# Dummy placeholder for Graph Logic (to be implemented)
 def remove_group_from_au(group_id: str):
     return {"status": "removed_from_au", "group_id": group_id}
 
