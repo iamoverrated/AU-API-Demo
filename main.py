@@ -30,6 +30,10 @@ def get_access_token():
 
 # MS Graph: Create Administrative Unit
 def create_admin_unit(au_name: str, admin_upn: str):
+    existing = find_existing_admin_unit(au_name)
+    if existing:
+        return existing
+
     access_token = get_access_token()
     headers = {
         "Authorization": f"Bearer {access_token}",
