@@ -154,6 +154,26 @@ def create_app_registration(au_id: str):
         "au_id": au_id
     }
 
+# Check if user is admin
+def is_user_admin_of_au(user_upn: str, au_id: str):
+    access_token = get_access_token()
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    response = requests.get(
+        f"https://graph.microsoft.com/v1.0/directory/administrativeUnits/{au_id}/scopedRoleMembers",
+        headers=headers
+    )
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail=response.json())
+
+    members = response.json().get("value", [])
+    return any(
+        member.get("principal", {}).get("userPrincipalName", "").lower() == user_upn.lower()
+        for member in members
+    )
+
+
 # Dummy placeholder for Graph Logic (to be implemented)
 def remove_group_from_au(group_id: str):
     return {"status": "removed_from_au", "group_id": group_id}
@@ -166,10 +186,6 @@ def add_members_to_group(group_id: str, members: List[str]):
 
 def add_admin_to_au(au_id: str, admin_upn: str):
     return {"au_id": au_id, "admin": admin_upn}
-
-def is_user_admin_of_au(user_upn: str, au_id: str):
-    dummy_admins = {"fake-au-id": ["admin@domain.com"]}
-    return user_upn in dummy_admins.get(au_id, [])
 
 def list_tools():
     return [
