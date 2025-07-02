@@ -154,7 +154,7 @@ def create_app_registration(au_id: str):
     # Assign AU-scoped Role to SP (Admin)
     role_assignment = {
         "principalId": sp["id"],
-        "resourceScope": f"/administrativeUnits/{au_id}",
+        "resourceScope": f"/directory/administrativeUnits/{au_id}",
         "roleDefinitionId": "fdd7a751-b60b-444a-984c-02652fe8fa1c"  # group admin role
     }
     ra_response = requests.post(
