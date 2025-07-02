@@ -157,7 +157,7 @@ def create_app_registration(au_id: str):
         "@odata.type": "#microsoft.graph.unifiedRoleAssignment",
         "principalId": sp["id"],
         "directoryScopeId": f"/directory/administrativeUnits/{au_id}",
-        "roleDefinitionId": "fdd7a751-b60b-444a-984c-02652fe8fa1c"  # group admin role
+        "roleDefinitionId": "fe930be7-5e62-47db-91af-98c3a49a38b1"  # group admin role
     }
     ra_response = requests.post(
         f"https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments",
