@@ -152,21 +152,6 @@ def create_app_registration(au_id: str):
         raise HTTPException(status_code=sp_response.status_code, detail=sp_response.json())
     sp = sp_response.json()
 
-    # Assign AU-scoped Role to SP (Admin)
-    role_assignment = {
-        "@odata.type": "#microsoft.graph.unifiedRoleAssignment",
-        "principalId": sp["id"],
-        "directoryScopeId": f"/directory/administrativeUnits/{au_id}",
-        "roleDefinitionId": "fe930be7-5e62-47db-91af-98c3a49a38b1"  # group admin role
-    }
-    ra_response = requests.post(
-        f"https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments",
-        headers=headers,
-        json=role_assignment
-    )
-    if ra_response.status_code not in (200, 201):
-        raise HTTPException(status_code=ra_response.status_code, detail=ra_response.json())
-
     return {
         "app_display_name": app["displayName"],
         "app_id": app["appId"],
