@@ -1,0 +1,150 @@
+openapi: 3.0.1
+info:
+  title: Azure Provisioning API
+  version: 1.3.0
+paths:
+  /provision:
+    post:
+      operationId: provision_tenant_unit
+      summary: Create an administrative unit with prefixed groups and app registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [au_name, groups, user_upn]
+              properties:
+                au_name:
+                  type: string
+                groups:
+                  type: array
+                  items:
+                    type: string
+                create_app_registration:
+                  type: boolean
+                user_upn:
+                  type: string
+      responses:
+        '200':
+          description: Administrative Unit provisioned
+
+  /remove_group:
+    post:
+      operationId: remove_group_from_au
+      summary: Remove a group from an administrative unit (requires admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [group_id, au_id, user_upn]
+              properties:
+                group_id:
+                  type: string
+                au_id:
+                  type: string
+                user_upn:
+                  type: string
+      responses:
+        '200':
+          description: Group removed from AU
+
+  /add_group:
+    post:
+      operationId: add_group_to_au
+      summary: Add an existing group to an administrative unit (requires admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [group_id, au_id, user_upn]
+              properties:
+                group_id:
+                  type: string
+                au_id:
+                  type: string
+                user_upn:
+                  type: string
+      responses:
+        '200':
+          description: Group added to AU
+
+  /add_members:
+    post:
+      operationId: add_members_to_group
+      summary: Add members to a group in an AU (requires admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [group_id, members, user_upn]
+              properties:
+                group_id:
+                  type: string
+                members:
+                  type: array
+                  items:
+                    type: string
+                user_upn:
+                  type: string
+      responses:
+        '200':
+          description: Members added
+
+  /add_admin:
+    post:
+      operationId: add_admin_to_au
+      summary: Add an admin to an AU (requires admin rights)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [au_id, admin_upn, user_upn]
+              properties:
+                au_id:
+                  type: string
+                admin_upn:
+                  type: string
+                user_upn:
+                  type: string
+      responses:
+        '200':
+          description: Admin added
+
+  /list_tools:
+    get:
+      operationId: list_tools
+      summary: List all available tools in this API
+      responses:
+        '200':
+          description: Tool list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available_tools:
+                    type: array
+                    items:
+                      type: string
+
+servers:
+  - url: https://YOUR_DEPLOYED_DOMAIN.com
+    description: Replace with your public API domain
+
+components:
+  securitySchemes:
+    api_key:
+      type: apiKey
+      in: header
+      name: Authorization
+security:
+  - api_key: []

@@ -124,6 +124,9 @@ async def add_members_handler(request: Request, payload: AddMembersRequest):
     if api_key != expected_key:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
+    if not is_user_admin_of_au(payload.user_upn, "fake-au-id"):
+        raise HTTPException(status_code=403, detail="User is not an admin of the specified AU")
+
     result = add_members_to_group(payload.group_id, payload.members)
     result["requested_by"] = payload.user_upn
     return result
@@ -134,6 +137,9 @@ async def add_admin_handler(request: Request, payload: AddAdminRequest):
     expected_key = os.getenv("API_KEY", "Bearer test123")
     if api_key != expected_key:
         raise HTTPException(status_code=403, detail="Unauthorized")
+
+    if not is_user_admin_of_au(payload.user_upn, payload.au_id):
+        raise HTTPException(status_code=403, detail="User is not an admin of the specified AU")
 
     result = add_admin_to_au(payload.au_id, payload.admin_upn)
     result["requested_by"] = payload.user_upn
