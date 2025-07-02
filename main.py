@@ -28,6 +28,21 @@ def get_access_token():
     else:
         raise HTTPException(status_code=500, detail="Failed to acquire access token")
 
+# MS Graph: Check if AU already exists
+
+def find_existing_admin_unit(au_name: str):
+    access_token = get_access_token()
+    headers = {"Authorization": f"Bearer {access_token}"}
+    response = requests.get(
+        f"https://graph.microsoft.com/v1.0/directory/administrativeUnits?$filter=displayName eq '{au_name}'",
+        headers=headers
+    )
+    if response.status_code == 200:
+        results = response.json().get("value", [])
+        if results:
+            return results[0]
+    return None
+
 # MS Graph: Create Administrative Unit
 def create_admin_unit(au_name: str, admin_upn: str):
     existing = find_existing_admin_unit(au_name)
