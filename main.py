@@ -7,11 +7,12 @@ import os
 app = FastAPI()
 
 # Dummy logic (replace with actual MS Graph logic)
-def create_admin_unit(au_name: str):
-    return {"id": "fake-au-id", "name": au_name}
+def create_admin_unit(au_name: str, admin_upn: str):
+    return {"id": "fake-au-id", "name": au_name, "admins": [admin_upn]}
 
-def create_group(group_name: str, au_id: str):
-    return {"id": f"fake-group-id-{group_name.lower()}", "name": group_name, "au_id": au_id}
+def create_group(group_name: str, au_id: str, owner_upn: str):
+    full_name = f"AUG_{group_name}"
+    return {"id": f"fake-group-id-{group_name.lower()}", "name": full_name, "au_id": au_id, "owners": [owner_upn]}
 
 def create_app_registration(au_id: str):
     return {"client_id": "fake-client-id", "client_secret": "fake-client-secret", "au_id": au_id}
@@ -27,6 +28,11 @@ def add_members_to_group(group_id: str, members: List[str]):
 
 def add_admin_to_au(au_id: str, admin_upn: str):
     return {"au_id": au_id, "admin": admin_upn}
+
+def is_user_admin_of_au(user_upn: str, au_id: str):
+    # Dummy check — replace with actual lookup
+    dummy_admins = {"fake-au-id": ["admin@domain.com"]}
+    return user_upn in dummy_admins.get(au_id, [])
 
 def list_tools():
     return [
@@ -46,6 +52,7 @@ class ProvisionRequest(BaseModel):
 
 class RemoveGroupRequest(BaseModel):
     group_id: str
+    au_id: str
     user_upn: str
 
 class AddGroupRequest(BaseModel):
@@ -70,8 +77,8 @@ async def provision(request: Request, payload: ProvisionRequest):
     if api_key != expected_key:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
-    au = create_admin_unit(payload.au_name)
-    groups = [create_group(group, au["id"]) for group in payload.groups]
+    au = create_admin_unit(payload.au_name, payload.user_upn)
+    groups = [create_group(group, au["id"], payload.user_upn) for group in payload.groups]
     app_reg = create_app_registration(au["id"]) if payload.create_app_registration else None
 
     return {
@@ -89,6 +96,9 @@ async def remove_group_handler(request: Request, payload: RemoveGroupRequest):
     if api_key != expected_key:
         raise HTTPException(status_code=403, detail="Unauthorized")
 
+    if not is_user_admin_of_au(payload.user_upn, payload.au_id):
+        raise HTTPException(status_code=403, detail="User is not an admin of the specified AU")
+
     result = remove_group_from_au(payload.group_id)
     result["requested_by"] = payload.user_upn
     return result
@@ -99,6 +109,9 @@ async def add_group_handler(request: Request, payload: AddGroupRequest):
     expected_key = os.getenv("API_KEY", "Bearer test123")
     if api_key != expected_key:
         raise HTTPException(status_code=403, detail="Unauthorized")
+
+    if not is_user_admin_of_au(payload.user_upn, payload.au_id):
+        raise HTTPException(status_code=403, detail="User is not an admin of the specified AU")
 
     result = add_group_to_au(payload.group_id, payload.au_id)
     result["requested_by"] = payload.user_upn
