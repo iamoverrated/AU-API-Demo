@@ -155,10 +155,10 @@ def create_app_registration(au_id: str):
     role_assignment = {
         "principalId": sp["id"],
         "resourceScope": f"/directory/administrativeUnits/{au_id}",
-        "roleDefinitionId": "fdd7a751-b60b-444a-984c-02652fe8fa1c"  # group admin role
+        "appRoleId": "fdd7a751-b60b-444a-984c-02652fe8fa1c"  # group admin role
     }
     ra_response = requests.post(
-        "https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments",
+        f"https://graph.microsoft.com/v1.0/roleManagement/enterpriseApps/{sp['id']}/roleAssignments",
         headers=headers,
         json=role_assignment
     )
