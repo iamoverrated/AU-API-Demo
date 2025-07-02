@@ -3,8 +3,30 @@ from pydantic import BaseModel
 from typing import List
 import uvicorn
 import os
+from msal import ConfidentialClientApplication
+import requests
 
 app = FastAPI()
+
+# MSAL setup
+def get_access_token():
+    tenant_id = os.getenv("AZURE_TENANT_ID")
+    client_id = os.getenv("AZURE_CLIENT_ID")
+    client_secret = os.getenv("AZURE_CLIENT_SECRET")
+    authority = f"https://login.microsoftonline.com/{tenant_id}"
+    scope = ["https://graph.microsoft.com/.default"]
+
+    app = ConfidentialClientApplication(
+        client_id,
+        authority=authority,
+        client_credential=client_secret
+    )
+
+    result = app.acquire_token_for_client(scopes=scope)
+    if "access_token" in result:
+        return result["access_token"]
+    else:
+        raise HTTPException(status_code=500, detail="Failed to acquire access token")
 
 # Dummy logic (replace with actual MS Graph logic)
 def create_admin_unit(au_name: str, admin_upn: str):
@@ -30,7 +52,6 @@ def add_admin_to_au(au_id: str, admin_upn: str):
     return {"au_id": au_id, "admin": admin_upn}
 
 def is_user_admin_of_au(user_upn: str, au_id: str):
-    # Dummy check — replace with actual lookup
     dummy_admins = {"fake-au-id": ["admin@domain.com"]}
     return user_upn in dummy_admins.get(au_id, [])
 
@@ -76,6 +97,8 @@ async def provision(request: Request, payload: ProvisionRequest):
     expected_key = os.getenv("API_KEY", "Bearer test123")
     if api_key != expected_key:
         raise HTTPException(status_code=403, detail="Unauthorized")
+
+    access_token = get_access_token()  # MSAL token (not yet used in dummy functions)
 
     au = create_admin_unit(payload.au_name, payload.user_upn)
     groups = [create_group(group, au["id"], payload.user_upn) for group in payload.groups]
