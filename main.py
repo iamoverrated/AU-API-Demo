@@ -138,7 +138,8 @@ def create_app_registration(au_id: str):
     )
     if secret_response.status_code != 200:
         raise HTTPException(status_code=secret_response.status_code, detail=secret_response.json())
-    secret = secret_response.json()
+    secret_info = secret_response.json()
+    client_secret_value = secret_info["secretText"]
 
     # Create Service Principal
     sp_data = {"appId": app["appId"]}
@@ -153,12 +154,13 @@ def create_app_registration(au_id: str):
 
     # Assign AU-scoped Role to SP (Admin)
     role_assignment = {
+        "@odata.type": "#microsoft.graph.unifiedRoleAssignment",
         "principalId": sp["id"],
-        "resourceScope": f"/directory/administrativeUnits/{au_id}",
-        "appRoleId": "fdd7a751-b60b-444a-984c-02652fe8fa1c"  # group admin role
+        "directoryScopeId": f"/directory/administrativeUnits/{au_id}",
+        "roleDefinitionId": "fdd7a751-b60b-444a-984c-02652fe8fa1c"  # group admin role
     }
     ra_response = requests.post(
-        f"https://graph.microsoft.com/v1.0/roleManagement/enterpriseApps/{sp['id']}/roleAssignments",
+        f"https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignments",
         headers=headers,
         json=role_assignment
     )
@@ -170,7 +172,8 @@ def create_app_registration(au_id: str):
         "app_id": app["appId"],
         "client_id": app["id"],
         "service_principal_id": sp["id"],
-        "au_id": au_id
+        "au_id": au_id,
+        "client_secret": client_secret_value
     }
 
 # Check if user is admin
